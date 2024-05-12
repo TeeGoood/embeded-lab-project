@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Manrope } from "next/font/google";
+import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const manrope = Manrope({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'control your "water"',
-  description: "pew pew",
+  title: "Water Level Monitoring",
+  description: "Water Level Monitoring System - Embedded Lab Final Project",
 };
 
 export default function RootLayout({
@@ -15,13 +16,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        <script
-          src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js"
-          type="text/javascript"
-        ></script>
-      </head>
-      <body className={inter.className}>{children}</body>
+      <body className={manrope.className}>{children}</body>
     </html>
   );
 }
