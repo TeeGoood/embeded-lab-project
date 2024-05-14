@@ -24,11 +24,12 @@ export default function Home() {
       username: process.env.NEXT_PUBLIC_TOKEN as string,
       password: process.env.NEXT_PUBLIC_SECRET as string,
     });
-
-    client.on("connect", () => {
-      console.log("connect success");
-    });
     
+    console.log("render")
+
+    client.on("connect", () => console.log("connected", new Date()));
+    client.on("close", () => console.log("disconnected", new Date()));
+    client.on("error", (err) => console.error("error", err));
   }, []);
 
   return (
