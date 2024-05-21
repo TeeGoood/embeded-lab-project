@@ -31,15 +31,22 @@ export default function Home() {
       console.log("connected", new Date());
       client.subscribe("@msg/test", (err) => {
         if (!err) {
-          client.publish("@msg/test", "Hello mqtt");
+          // client.publish("@msg/test", "Hello mqtt");
         }
       });
     });
     client.on("close", () => console.log("disconnected", new Date()));
     client.on("error", (err) => console.error("error", err));
     client.on("message", (topic, message) => {
-      setlevel1(parseInt(message.toString()));
-      console.log(message.toString());
+      try{
+        const l = message.toString().split(" ");
+        console.log(l);
+        setlevel1(parseInt(l[1]));
+        setlevel2(parseInt(l[3]));
+      } catch (err) {
+        console.log(message.toString());
+        console.log(err);
+      }
     });
   }, []);
 
@@ -64,7 +71,7 @@ export default function Home() {
           </div>
           <div className="flex flex-col w-full gap-4 lg:gap-6">
             <div className="flex gap-4 justify-between lg:gap-6">
-              <CurrentLevel no={2} value={56} />
+              <CurrentLevel no={2} value={level2 || 0} />
               <button onClick={togglePump2} className="w-1/2 lg:w-1/3">
                 <PumpButton no={2} on={onPump2} />
               </button>

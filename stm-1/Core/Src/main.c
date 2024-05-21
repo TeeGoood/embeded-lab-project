@@ -1,20 +1,20 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2024 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2024 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -22,7 +22,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -32,7 +33,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-uint16_t adc_value;
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -42,6 +43,7 @@ uint16_t adc_value;
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
+DMA_HandleTypeDef hdma_adc1;
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
@@ -61,21 +63,36 @@ const osThreadAttr_t MessageSend_attributes = {
   .priority = (osPriority_t) osPriorityLow,
 };
 /* USER CODE BEGIN PV */
-uint32_t ADC_Buffer;
 uint32_t buf_rx[12];
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
-	adc_value = HAL_ADC_GetValue(hadc);
-	ADC_Buffer = adc_value;
+uint16_t val1 = 0;
+uint16_t val2 = 0;
+uint16_t rawValues[2];
 
-	char buf[20];
-	sprintf(buf, "value : %d\n\r", adc_value);
-	HAL_UART_Transmit(&huart2, buf, 20, 1000);
+char welcomeMsg[] = "==========Program Starting==========\n\r";
+char msg[20];
+
+char tx_msgToNode_1[20];
+char tx_msgToNode_2[20];
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
+	for (uint8_t i = 0; i < hadc1.Init.NbrOfConversion; i++) {
+		val1 = (uint16_t) rawValues[0];
+		val2 = (uint16_t) rawValues[1];
+	}
+	sprintf(tx_msgToNode_1, "1 %d ", val1);
+	sprintf(tx_msgToNode_2, "2 %d", val2);
+
+	sprintf(msg, "WS_1 : %hu \n\r", val1);
+	HAL_UART_Transmit(&huart2, (uint8_t*) msg, strlen(msg), 100);
+	sprintf(msg, "WS_2 : %hu \n\r", val2);
+	HAL_UART_Transmit(&huart2, (uint8_t*) msg, strlen(msg), 100);
 }
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_USART1_UART_Init(void);
@@ -119,29 +136,31 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART2_UART_Init();
   MX_ADC1_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
+  HAL_UART_Transmit(&huart2, welcomeMsg, strlen(welcomeMsg), 1000);
   /* USER CODE END 2 */
 
   /* Init scheduler */
   osKernelInitialize();
 
   /* USER CODE BEGIN RTOS_MUTEX */
-  /* add mutexes, ... */
+	/* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
-  /* add semaphores, ... */
+	/* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
 
   /* USER CODE BEGIN RTOS_TIMERS */
-  /* start timers, add new ones, ... */
+	/* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
+	/* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -152,11 +171,11 @@ int main(void)
   MessageSendHandle = osThreadNew(StartMessageSend, NULL, &MessageSend_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
+	/* add threads, ... */
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
-  /* add events, ... */
+	/* add events, ... */
   /* USER CODE END RTOS_EVENTS */
 
   /* Start scheduler */
@@ -165,22 +184,7 @@ int main(void)
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-//	  HAL_ADC_Start_IT(&hadc1);
-	  //buff_rx = "";
-//	  HAL_UART_Transmit(&huart2, "pai\n\r", 5, 100);
-//	  HAL_UART_Receive(&huart1, buf_rx, 12, 1000);
-//	  sprintf(buf_tx, "%s\n\r", buf_rx);
-//	  HAL_UART_Transmit(&huart2, buf_tx, 12, 100);
-//	  HAL_Delay(100);
-//	  HAL_UART_Transmit(&huart1, "Chanotai", 8, 100);
-//	  HAL_Delay(1000);
-
-
-//	  HAL_UART_Transmit(&huart1, "Chanotai", 8, 100);
-//	  HAL_UART_Transmit(&huart2, "Chanotai\n\r", 10, 100);
-//	  HAL_Delay(3000);
+	while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -257,15 +261,15 @@ static void MX_ADC1_Init(void)
   hadc1.Instance = ADC1;
   hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc1.Init.ScanConvMode = DISABLE;
-  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.ScanConvMode = ENABLE;
+  hadc1.Init.ContinuousConvMode = ENABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.NbrOfConversion = 2;
   hadc1.Init.DMAContinuousRequests = DISABLE;
-  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  hadc1.Init.EOCSelection = ADC_EOC_SEQ_CONV;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
     Error_Handler();
@@ -276,6 +280,16 @@ static void MX_ADC1_Init(void)
   sConfig.Channel = ADC_CHANNEL_0;
   sConfig.Rank = 1;
   sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_1;
+  sConfig.Rank = 2;
+  sConfig.SamplingTime = ADC_SAMPLETIME_480CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -353,6 +367,22 @@ static void MX_USART2_UART_Init(void)
 }
 
 /**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA2_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA2_Stream0_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -394,42 +424,39 @@ static void MX_GPIO_Init(void)
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
-/**
-  * @brief  Function implementing the defaultTask thread.
-  * @param  argument: Not used
-  * @retval None
-  */
+	/**
+	 * @brief  Function implementing the defaultTask thread.
+	 * @param  argument: Not used
+	 * @retval None
+	 */
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
-  /* Infinite loop */
-  for(;;)
-  {
-	HAL_ADC_Start_IT(&hadc1);
-    osDelay(1);
-  }
+		/* Infinite loop */
+		for (;;) {
+			HAL_ADC_Start_DMA(&hadc1, (uint32_t*) rawValues, 2);
+			osDelay(1000);
+		}
   /* USER CODE END 5 */
 }
 
 /* USER CODE BEGIN Header_StartMessageSend */
-/**
-* @brief Function implementing the MessageSend thread.
-* @param argument: Not used
-* @retval None
-*/
+	/**
+	 * @brief Function implementing the MessageSend thread.
+	 * @param argument: Not used
+	 * @retval None
+	 */
 /* USER CODE END Header_StartMessageSend */
 void StartMessageSend(void *argument)
 {
   /* USER CODE BEGIN StartMessageSend */
-  /* Infinite loop */
-  for(;;)
-  {
-	  char tx_buffer[10];
-	  sprintf(tx_buffer, "%d", ADC_Buffer);
-	HAL_UART_Transmit(&huart1, tx_buffer, 4, 100);
-    osDelay(3000);
-  }
+		/* Infinite loop */
+		for (;;) {
+			HAL_UART_Transmit(&huart1, (uint8_t *) tx_msgToNode_1, strlen(tx_msgToNode_1), HAL_MAX_DELAY);
+			HAL_UART_Transmit(&huart1, (uint8_t *) tx_msgToNode_2, strlen(tx_msgToNode_2), HAL_MAX_DELAY);
+			osDelay(2000);
+		}
   /* USER CODE END StartMessageSend */
 }
 
@@ -440,11 +467,10 @@ void StartMessageSend(void *argument)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  while (1)
-  {
-  }
+		/* User can add his own implementation to report the HAL error return state */
+		__disable_irq();
+		while (1) {
+		}
   /* USER CODE END Error_Handler_Debug */
 }
 
