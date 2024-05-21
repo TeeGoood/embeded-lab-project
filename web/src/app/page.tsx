@@ -10,6 +10,8 @@ import mqtt from "mqtt";
 export default function Home() {
   let [onPump1, setOnPump1] = useState(false);
   let [onPump2, setOnPump2] = useState(false);
+  const [level1, setlevel1] = useState(0);
+  const [level2, setlevel2] = useState(0);
 
   function togglePump1() {
     setOnPump1(!onPump1);
@@ -24,12 +26,21 @@ export default function Home() {
       username: process.env.NEXT_PUBLIC_TOKEN as string,
       password: process.env.NEXT_PUBLIC_SECRET as string,
     });
-    
-    console.log("render")
 
-    client.on("connect", () => console.log("connected", new Date()));
+    client.on("connect", () => {
+      console.log("connected", new Date());
+      client.subscribe("@msg/test", (err) => {
+        if (!err) {
+          client.publish("@msg/test", "Hello mqtt");
+        }
+      });
+    });
     client.on("close", () => console.log("disconnected", new Date()));
     client.on("error", (err) => console.error("error", err));
+    client.on("message", (topic, message) => {
+      setlevel1(parseInt(message.toString()));
+      console.log(message.toString());
+    });
   }, []);
 
   return (
@@ -44,7 +55,7 @@ export default function Home() {
         <div className="flex flex-col gap-10 lg:gap-14 lg:flex-row lg:justify-between">
           <div className="flex flex-col w-full gap-4 lg:gap-6">
             <div className="flex gap-4 justify-between lg:gap-6">
-              <CurrentLevel no={1} value={56} />
+              <CurrentLevel no={1} value={level1 || 0} />
               <button onClick={togglePump1} className="w-1/2 lg:w-1/3">
                 <PumpButton no={1} on={onPump1} />
               </button>
