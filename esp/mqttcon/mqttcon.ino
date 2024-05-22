@@ -4,8 +4,8 @@
 #include <SoftwareSerial.h>
 EspSoftwareSerial::UART testSerial;
 
-const char* ssid = "Tee";
-const char* password = "iloveyou";
+const char* ssid = "Kittikun";
+const char* password = "65309416";
 const char* mqtt_server = "broker.netpie.io";
 const int mqtt_port = 1883;
 const char* mqtt_Client = "ac8d58ce-75f5-46f0-87dc-e092dfe74a4b";
@@ -23,6 +23,7 @@ void reconnect() {
     Serial.print("Attempting MQTT connection…");
     if (client.connect(mqtt_Client, mqtt_username, mqtt_password)) {
       Serial.println("connected");
+      client.subscribe("@msg/switch");
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -48,7 +49,9 @@ void setup() {
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
+
   client.setServer(mqtt_server, mqtt_port);
+  client.setCallback(callback);
 }
 
 void loop() {
@@ -56,18 +59,62 @@ void loop() {
     reconnect();
   }
   client.loop();
+
+  // Handle Sensor data from STM32
   while (testSerial.available() > 0) {
-    // byte buf[31];
+    char *words[4];
+    char delimiters[] = " ";
+
     String myString = testSerial.readString();
-    client.publish("@msg/test", String(myString).c_str());
-    Serial.println(myString);
+    char * data = new char[myString.length()];
+    strcpy(data, myString.c_str() );
+
+    splitString(data, delimiters, words);
+
+    char dto[55];
+    sprintf(dto, "{ \"data\" : { \"sensor1\" : %s, \"sensor2\" : %s } }", words[1], words[3]);
+
+    client.publish("@shadow/data/update", dto);
+    client.publish("@msg/test", myString.c_str());
+
+    delete[] data;
   }
-  // long now = millis();
-  // if (now - lastMsg > 2000) {
-  //   lastMsg = now;
-  //   ++value;
-  //   client.publish("@msg/test", "Hello NETPIE2020");
-  //   Serial.println("Hello NETPIE2020");
-  // }
-  delay(10);
+  // testSerial.write("Hell");
+  // Serial.println("Hell");
+  // delay(1000);
+}
+
+void sendDataFromSerial(uint8_t msg) {
+  testSerial.write(msg);
+}
+
+void readDataFromSerial() {
+  while (testSerial.available() > 0) {
+    String income = testSerial.readString();
+    Serial.print(income);
+    yield();
+  }
+}
+
+void callback(char* topic, byte* payload, unsigned int length) {
+  Serial.print("Message arrived [");
+  Serial.print(topic);
+  Serial.print("] ");
+  String msg = "";
+  int i = 0;
+  while (i < length) msg += (char)payload[i++];
+  
+  Serial.println(msg);
+  testSerial.write(msg.c_str());
+}
+
+void splitString(char* str, char* delimiters, char* resultArray[]) {
+  char* token = strtok(str, delimiters);
+  int index = 0;
+
+  while (token != NULL) {
+    resultArray[index] = token; // Store the token in the result array
+    index++;sw``
+    token = strtok(NULL, delimiters); // Get the next token
+  }
 }

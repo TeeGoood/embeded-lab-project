@@ -55,38 +55,26 @@ const osThreadAttr_t defaultTask_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* Definitions for MessageSend */
-osThreadId_t MessageSendHandle;
-const osThreadAttr_t MessageSend_attributes = {
-  .name = "MessageSend",
+/* Definitions for ReceiveMsg */
+osThreadId_t ReceiveMsgHandle;
+const osThreadAttr_t ReceiveMsg_attributes = {
+  .name = "ReceiveMsg",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 /* USER CODE BEGIN PV */
-uint32_t buf_rx[12];
+uint32_t rxBuffer[12];
 uint16_t val1 = 0;
 uint16_t val2 = 0;
 uint16_t rawValues[2];
+
+__IO uint8_t uADCConversionFlag = 0;
 
 char welcomeMsg[] = "==========Program Starting==========\n\r";
 char msg[20];
 
 char tx_msgToNode_1[20];
 char tx_msgToNode_2[20];
-
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
-	for (uint8_t i = 0; i < hadc1.Init.NbrOfConversion; i++) {
-		val1 = (uint16_t) rawValues[0];
-		val2 = (uint16_t) rawValues[1];
-	}
-	sprintf(tx_msgToNode_1, "1 %d ", val1);
-	sprintf(tx_msgToNode_2, "2 %d", val2);
-
-	sprintf(msg, "WS_1 : %hu \n\r", val1);
-	HAL_UART_Transmit(&huart2, (uint8_t*) msg, strlen(msg), 100);
-	sprintf(msg, "WS_2 : %hu \n\r", val2);
-	HAL_UART_Transmit(&huart2, (uint8_t*) msg, strlen(msg), 100);
-}
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -97,7 +85,7 @@ static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_USART1_UART_Init(void);
 void StartDefaultTask(void *argument);
-void StartMessageSend(void *argument);
+void StartReceiveMsg(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -105,7 +93,62 @@ void StartMessageSend(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
+	for (uint8_t i = 0; i < hadc1.Init.NbrOfConversion; i++) {
+		val1 = (uint16_t) rawValues[0];
+		val2 = (uint16_t) rawValues[1];
+	}
+	sprintf(tx_msgToNode_1, "1 %d ", val1);
+	sprintf(tx_msgToNode_2, "2 %d", val2);
 
+//	sprintf(msg, "WS_1 : %hu \n\r", val1);
+//	HAL_UART_Transmit(&huart2, (uint8_t*) msg, strlen(msg), 100);
+//	sprintf(msg, "WS_2 : %hu \n\r", val2);
+//	HAL_UART_Transmit(&huart2, (uint8_t*) msg, strlen(msg), 100);
+
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t*) rawValues, 2);
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+	if (huart == &huart1) {
+		char buf[5];
+		sprintf(buf, "%s\n\r", rxBuffer);
+//		HAL_UART_Transmit(&huart2, buf, 5, 1000);
+
+		if (buf[0] == '1') {
+			if (buf[2] == '0') {
+				// Turn motor off
+				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
+				HAL_UART_Transmit(&huart2, "1 off\n\r", 7, 1000);
+			} else {
+				// Turn motor on
+				HAL_UART_Transmit(&huart2, "1 on\n\r", 6, 1000);
+				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
+			}
+		}
+
+		if (buf[0] == '2') {
+			if (buf[2] == '0') {
+				// Turn motor off
+				HAL_UART_Transmit(&huart2, "2 off\n\r", 7, 1000);
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
+			} else {
+				// Turn motor on
+				HAL_UART_Transmit(&huart2, "2 on\n\r", 6, 1000);
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
+			}
+		}
+	}
+	HAL_UART_Receive_IT(&huart1, rxBuffer, 3);
+}
+
+/* USER CODE BEGIN Header_StartMessageSend */
+/**
+ * @brief Function implementing the MessageSend thread.
+ * @param argument: Not used
+ * @retval None
+ */
+/* USER CODE END Header_StartMessageSend */
 /* USER CODE END 0 */
 
 /**
@@ -141,41 +184,43 @@ int main(void)
   MX_ADC1_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-  HAL_UART_Transmit(&huart2, welcomeMsg, strlen(welcomeMsg), 1000);
+	HAL_UART_Transmit(&huart2, welcomeMsg, strlen(welcomeMsg), 1000);
+
+
   /* USER CODE END 2 */
 
   /* Init scheduler */
   osKernelInitialize();
 
   /* USER CODE BEGIN RTOS_MUTEX */
-	/* add mutexes, ... */
+  /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
-	/* add semaphores, ... */
+  /* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
 
   /* USER CODE BEGIN RTOS_TIMERS */
-	/* start timers, add new ones, ... */
+  /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
-	/* add queues, ... */
+  /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
-  /* creation of MessageSend */
-  MessageSendHandle = osThreadNew(StartMessageSend, NULL, &MessageSend_attributes);
+  /* creation of ReceiveMsg */
+  ReceiveMsgHandle = osThreadNew(StartReceiveMsg, NULL, &ReceiveMsg_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-	/* add threads, ... */
+  /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
-	/* add events, ... */
+  /* add events, ... */
   /* USER CODE END RTOS_EVENTS */
 
   /* Start scheduler */
@@ -188,7 +233,12 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
+//		HAL_UART_Transmit(&huart1, (uint8_t*) tx_msgToNode_1,
+//				strlen(tx_msgToNode_1), HAL_MAX_DELAY);
+//		HAL_UART_Transmit(&huart1, (uint8_t*) tx_msgToNode_2,
+//				strlen(tx_msgToNode_2), HAL_MAX_DELAY);
+//		HAL_Delay(2000);
+	}
   /* USER CODE END 3 */
 }
 
@@ -400,7 +450,10 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, LD2_Pin|GPIO_PIN_8, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
@@ -408,12 +461,19 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : LD2_Pin */
-  GPIO_InitStruct.Pin = LD2_Pin;
+  /*Configure GPIO pins : LD2_Pin PA8 */
+  GPIO_InitStruct.Pin = LD2_Pin|GPIO_PIN_8;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PB5 */
+  GPIO_InitStruct.Pin = GPIO_PIN_5;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
@@ -424,40 +484,45 @@ static void MX_GPIO_Init(void)
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
-	/**
-	 * @brief  Function implementing the defaultTask thread.
-	 * @param  argument: Not used
-	 * @retval None
-	 */
+/**
+  * @brief  Function implementing the defaultTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
-		/* Infinite loop */
-		for (;;) {
-			HAL_ADC_Start_DMA(&hadc1, (uint32_t*) rawValues, 2);
-			osDelay(1000);
-		}
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t*) rawValues, 2);
+  /* Infinite loop */
+  for(;;)
+  {
+	char combined_msg[strlen(tx_msgToNode_1) + strlen(tx_msgToNode_2) + 1];
+	strcpy(combined_msg, tx_msgToNode_1);
+	strcat(combined_msg, tx_msgToNode_2);
+	HAL_UART_Transmit(&huart1, (uint8_t*) combined_msg, strlen(combined_msg), HAL_MAX_DELAY);
+	osDelay(2000);
+  }
   /* USER CODE END 5 */
 }
 
-/* USER CODE BEGIN Header_StartMessageSend */
-	/**
-	 * @brief Function implementing the MessageSend thread.
-	 * @param argument: Not used
-	 * @retval None
-	 */
-/* USER CODE END Header_StartMessageSend */
-void StartMessageSend(void *argument)
+/* USER CODE BEGIN Header_StartReceiveMsg */
+/**
+* @brief Function implementing the ReceiveMsg thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartReceiveMsg */
+void StartReceiveMsg(void *argument)
 {
-  /* USER CODE BEGIN StartMessageSend */
-		/* Infinite loop */
-		for (;;) {
-			HAL_UART_Transmit(&huart1, (uint8_t *) tx_msgToNode_1, strlen(tx_msgToNode_1), HAL_MAX_DELAY);
-			HAL_UART_Transmit(&huart1, (uint8_t *) tx_msgToNode_2, strlen(tx_msgToNode_2), HAL_MAX_DELAY);
-			osDelay(2000);
-		}
-  /* USER CODE END StartMessageSend */
+  /* USER CODE BEGIN StartReceiveMsg */
+	HAL_UART_Receive_IT(&huart1, rxBuffer, 3);
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartReceiveMsg */
 }
 
 /**
@@ -467,10 +532,10 @@ void StartMessageSend(void *argument)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-		/* User can add his own implementation to report the HAL error return state */
-		__disable_irq();
-		while (1) {
-		}
+	/* User can add his own implementation to report the HAL error return state */
+	__disable_irq();
+	while (1) {
+	}
   /* USER CODE END Error_Handler_Debug */
 }
 
