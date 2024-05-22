@@ -7,6 +7,7 @@ import PumpButton from "@/components/PumpButton";
 import Graph from "@/components/Graph";
 import { processData } from "@/lib/processData";
 import mqtt from "mqtt";
+import { cal1, cal2 } from "@/lib/utils";
 
 export default function Home() {
   let [onPump1, setOnPump1] = useState(false);
@@ -15,16 +16,16 @@ export default function Home() {
   const [level2, setlevel2] = useState(0);
   const [data1, setData1] = useState([]);
   const [data2, setData2] = useState([]);
-  const [clientObject, setclientObject] = useState(null);
+  const [clientObject, setclientObject] = useState<mqtt.MqttClient | null>(null);
   const [cnt, setCnt] = useState(0);
 
   function togglePump1() {
     setOnPump1(!onPump1);
-    clientObject.publish("@msg/switch", `1 ${onPump1 ? "0" : "1"}`);
+    clientObject?.publish("@msg/switch", `1 ${onPump1 ? "0" : "1"}`);
   }
   function togglePump2() {
     setOnPump2(!onPump2);
-    clientObject.publish("@msg/switch", `2 ${onPump2 ? "0" : "1"}`);
+    clientObject?.publish("@msg/switch", `2 ${onPump2 ? "0" : "1"}`);
   }
 
   useEffect(() => {
@@ -52,18 +53,11 @@ export default function Home() {
     client.on("close", () => console.log("disconnected", new Date()));
     client.on("error", (err) => console.error("error", err));
     client.on("message", (topic, message) => {
-      if (topic == "@msg/switch") {
-        console.log(message.toString());
-        return;
-      }
-
       try {
         const l = message.toString().split(" ");
-        console.log(l);
-        setlevel1(parseInt(l[1]));
-        setlevel2(parseInt(l[3]));
+        setlevel1(cal1(parseInt(l[1])));
+        setlevel2(cal2(parseInt(l[3])));
       } catch (err) {
-        console.log(message.toString());
         console.log(err);
       }
     });
