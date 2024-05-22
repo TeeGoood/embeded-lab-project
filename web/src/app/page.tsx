@@ -14,9 +14,20 @@ export default function Home() {
   const [level2, setlevel2] = useState(0);
   const [clientObject, setclientObject] = useState(null);
 
+  const [cnt, setCnt] = useState(0);
+
   function togglePump1() {
     setOnPump1(!onPump1);
-    clientObject.publish("@msg/switch", `1 ${onPump1 ? "off": "on"}`);
+    // clientObject.publish("@msg/switch", `1 ${onPump1 ? "off": "on"}`);
+    const data = JSON.stringify({
+      "data" : {
+        "sensor1" : cnt,
+        "sensor2": cnt+5,
+      }
+    })
+    clientObject.publish("@shadow/data/update", data);
+    console.log(data)
+    setCnt((prev) => prev +1)
   }
   function togglePump2() {
     setOnPump2(!onPump2);
