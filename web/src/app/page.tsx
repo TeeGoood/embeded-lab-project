@@ -17,11 +17,12 @@ export default function Home() {
   const [cnt, setCnt] = useState(0);
 
   function togglePump1() {
-    clientObject.publish("@msg/switch", `1 ${onPump1 ? "0": "1"}`);
+    setOnPump1(!onPump1);
+    clientObject.publish("@msg/switch", `1 ${onPump1 ? "0" : "1"}`);
   }
   function togglePump2() {
     setOnPump2(!onPump2);
-    clientObject.publish("@msg/switch", `2 ${onPump2 ? "0": "1"}`);
+    clientObject.publish("@msg/switch", `2 ${onPump2 ? "0" : "1"}`);
   }
 
   useEffect(() => {
@@ -32,7 +33,7 @@ export default function Home() {
     });
 
     setclientObject(client);
-  
+
     client.on("connect", () => {
       console.log("connected", new Date());
       client.subscribe("@msg/test", (err) => {
@@ -49,12 +50,12 @@ export default function Home() {
     client.on("close", () => console.log("disconnected", new Date()));
     client.on("error", (err) => console.error("error", err));
     client.on("message", (topic, message) => {
-      if(topic == "@msg/switch"){
+      if (topic == "@msg/switch") {
         console.log(message.toString());
         return;
       }
 
-      try{
+      try {
         const l = message.toString().split(" ");
         console.log(l);
         setlevel1(parseInt(l[1]));
