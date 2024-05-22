@@ -12,12 +12,15 @@ export default function Home() {
   let [onPump2, setOnPump2] = useState(false);
   const [level1, setlevel1] = useState(0);
   const [level2, setlevel2] = useState(0);
+  const [clientObject, setclientObject] = useState(null);
 
   function togglePump1() {
     setOnPump1(!onPump1);
+    clientObject.publish("@msg/switch", `1 ${onPump1 ? "off": "on"}`);
   }
   function togglePump2() {
     setOnPump2(!onPump2);
+    clientObject.publish("@msg/switch", `2 ${onPump2 ? "off": "on"}`);
   }
 
   useEffect(() => {
@@ -27,9 +30,16 @@ export default function Home() {
       password: process.env.NEXT_PUBLIC_SECRET as string,
     });
 
+    setclientObject(client);
+  
     client.on("connect", () => {
       console.log("connected", new Date());
       client.subscribe("@msg/test", (err) => {
+        if (!err) {
+          // client.publish("@msg/test", "Hello mqtt");
+        }
+      });
+      client.subscribe("@msg/switch", (err) => {
         if (!err) {
           // client.publish("@msg/test", "Hello mqtt");
         }
@@ -38,6 +48,11 @@ export default function Home() {
     client.on("close", () => console.log("disconnected", new Date()));
     client.on("error", (err) => console.error("error", err));
     client.on("message", (topic, message) => {
+      if(topic == "@msg/switch"){
+        console.log(message.toString());
+        return;
+      }
+
       try{
         const l = message.toString().split(" ");
         console.log(l);
