@@ -43,6 +43,41 @@ export default function Home() {
     });
   }, []);
 
+  
+const data = [
+  {
+    date: "A",
+    level: 40,
+  },
+  {
+    date: "B",
+    level: 30,
+  },
+  {
+    date: "C",
+    level: 20,
+  },
+  {
+    date: "D",
+    level: 29,
+  },
+  {
+    date: "E",
+    level: 18,
+  },
+  {
+    date: "F",
+    level: 23,
+  },
+  {
+    date: "G",
+    level: 34,
+  },
+];
+
+const color1 = "#8884D8"
+const color2 = "#82CA9D"
+
   return (
     <>
       <div className="flex flex-col m-12 gap-8 lg:mx-20 lg:my-16 text-gray-950 text-balance">
@@ -60,7 +95,7 @@ export default function Home() {
                 <PumpButton no={1} on={onPump1} />
               </button>
             </div>
-            <Graph no={1} />
+            <Graph no={1} color={color1} data={data}/>
           </div>
           <div className="flex flex-col w-full gap-4 lg:gap-6">
             <div className="flex gap-4 justify-between lg:gap-6">
@@ -69,7 +104,7 @@ export default function Home() {
                 <PumpButton no={2} on={onPump2} />
               </button>
             </div>
-            <Graph no={2} />
+            <Graph no={2} color={color2} data={data}/>
           </div>
         </div>
       </div>
