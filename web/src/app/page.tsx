@@ -5,6 +5,7 @@ import Time from "@/components/Time";
 import CurrentLevel from "@/components/CurrentLevel";
 import PumpButton from "@/components/PumpButton";
 import Graph from "@/components/Graph";
+import { processData } from "@/lib/processData";
 import mqtt from "mqtt";
 
 export default function Home() {
@@ -12,15 +13,17 @@ export default function Home() {
   let [onPump2, setOnPump2] = useState(false);
   const [level1, setlevel1] = useState(0);
   const [level2, setlevel2] = useState(0);
+  const [data1, setData1] = useState([]);
+  const [data2, setData2] = useState([]);
   const [clientObject, setclientObject] = useState(null);
 
   function togglePump1() {
     setOnPump1(!onPump1);
-    clientObject.publish("@msg/switch", `1 ${onPump1 ? "off": "on"}`);
+    clientObject.publish("@msg/switch", `1 ${onPump1 ? "off" : "on"}`);
   }
   function togglePump2() {
     setOnPump2(!onPump2);
-    clientObject.publish("@msg/switch", `2 ${onPump2 ? "off": "on"}`);
+    clientObject.publish("@msg/switch", `2 ${onPump2 ? "off" : "on"}`);
   }
 
   useEffect(() => {
@@ -31,7 +34,7 @@ export default function Home() {
     });
 
     setclientObject(client);
-  
+
     client.on("connect", () => {
       console.log("connected", new Date());
       client.subscribe("@msg/test", (err) => {
@@ -48,12 +51,12 @@ export default function Home() {
     client.on("close", () => console.log("disconnected", new Date()));
     client.on("error", (err) => console.error("error", err));
     client.on("message", (topic, message) => {
-      if(topic == "@msg/switch"){
+      if (topic == "@msg/switch") {
         console.log(message.toString());
         return;
       }
 
-      try{
+      try {
         const l = message.toString().split(" ");
         console.log(l);
         setlevel1(parseInt(l[1]));
@@ -65,40 +68,53 @@ export default function Home() {
     });
   }, []);
 
-  
-const data = [
-  {
-    date: "A",
-    level: 40,
-  },
-  {
-    date: "B",
-    level: 30,
-  },
-  {
-    date: "C",
-    level: 20,
-  },
-  {
-    date: "D",
-    level: 29,
-  },
-  {
-    date: "E",
-    level: 18,
-  },
-  {
-    date: "F",
-    level: 23,
-  },
-  {
-    date: "G",
-    level: 34,
-  },
-];
+  const fetchData = async () => {
+    const response = await fetch(
+      "https://api.netpie.io/v2/feed/api/v1/datapoints/query",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Device ${process.env.NEXT_PUBLIC_CLIENT_ID_FEED}:${process.env.NEXT_PUBLIC_TOKEN_FEED}`,
+        },
+        body: JSON.stringify({
+          start_relative: {
+            value: 60,
+            unit: "minutes",
+          },
+          metrics: [
+            {
+              name: `${process.env.NEXT_PUBLIC_CLIENT_ID_FEED}`,
+              tags: {
+                attr: ["sensor1", "sensor2"],
+              },
+            },
+          ],
+        }),
+      }
+    );
 
-const color1 = "#8884D8"
-const color2 = "#82CA9D"
+    const data = await response.json();
+    console.log(data);
+    const [d1, d2] = processData(data);
+    console.log(d1);
+    console.log(d2);
+    setData1(d1);
+    setData2(d2);
+  };
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      fetchData();
+    }, 1000);
+
+    return () => {
+      clearInterval(timer);
+    };
+  });
+
+  const color1 = "#8884D8";
+  const color2 = "#82CA9D";
 
   return (
     <>
@@ -117,7 +133,7 @@ const color2 = "#82CA9D"
                 <PumpButton no={1} on={onPump1} />
               </button>
             </div>
-            <Graph no={1} color={color1} data={data}/>
+            <Graph no={1} color={color1} data={data1} />
           </div>
           <div className="flex flex-col w-full gap-4 lg:gap-6">
             <div className="flex gap-4 justify-between lg:gap-6">
@@ -126,7 +142,7 @@ const color2 = "#82CA9D"
                 <PumpButton no={2} on={onPump2} />
               </button>
             </div>
-            <Graph no={2} color={color2} data={data}/>
+            <Graph no={2} color={color2} data={data2} />
           </div>
         </div>
       </div>
