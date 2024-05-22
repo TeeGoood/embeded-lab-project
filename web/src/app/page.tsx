@@ -16,7 +16,6 @@ export default function Home() {
   const [data1, setData1] = useState([]);
   const [data2, setData2] = useState([]);
   const [clientObject, setclientObject] = useState(null);
-
   const [cnt, setCnt] = useState(0);
 
   function togglePump1() {
@@ -81,7 +80,7 @@ export default function Home() {
         },
         body: JSON.stringify({
           start_relative: {
-            value: 60,
+            value: 3,
             unit: "minutes",
           },
           metrics: [
@@ -97,10 +96,7 @@ export default function Home() {
     );
 
     const data = await response.json();
-    console.log(data);
     const [d1, d2] = processData(data);
-    console.log(d1);
-    console.log(d2);
     setData1(d1);
     setData2(d2);
   };
