@@ -69,5 +69,5 @@ void loop() {
   //   client.publish("@msg/test", "Hello NETPIE2020");
   //   Serial.println("Hello NETPIE2020");
   // }
-  delay(1);
+  delay(10);
 }
