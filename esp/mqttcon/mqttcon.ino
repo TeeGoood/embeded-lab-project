@@ -4,8 +4,8 @@
 #include <SoftwareSerial.h>
 EspSoftwareSerial::UART testSerial;
 
-const char* ssid = "Kittikun";
-const char* password = "65309416";
+const char* ssid = ""; //Wifi username
+const char* password = ""; // Wifi Password
 const char* mqtt_server = "broker.netpie.io";
 const int mqtt_port = 1883;
 const char* mqtt_Client = "ac8d58ce-75f5-46f0-87dc-e092dfe74a4b";
