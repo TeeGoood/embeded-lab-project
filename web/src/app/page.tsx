@@ -17,7 +17,6 @@ export default function Home() {
   const [data1, setData1] = useState([]);
   const [data2, setData2] = useState([]);
   const [clientObject, setclientObject] = useState<mqtt.MqttClient | null>(null);
-  const [cnt, setCnt] = useState(0);
 
   function togglePump1() {
     setOnPump1(!onPump1);
@@ -74,7 +73,7 @@ export default function Home() {
         },
         body: JSON.stringify({
           start_relative: {
-            value: 3,
+            value: 15,
             unit: "minutes",
           },
           metrics: [

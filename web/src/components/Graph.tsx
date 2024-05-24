@@ -20,7 +20,7 @@ export default function Graph({
     <Card className={cn("w-full", className)} {...props}>
       <CardHeader className="p-4 lg:p-6">
         <CardTitle className="text-sm lg:text-base">
-          3-Minutes Water Level Graph - {props.no}
+          15-Minutes Water Level Graph - {props.no}
         </CardTitle>
       </CardHeader>
       <CardContent className="p-4 pt-0 lg:p-6 lg:pt-0">
@@ -34,7 +34,7 @@ export default function Graph({
                 </linearGradient>
               </defs>
               <CartesianGrid />
-              <XAxis dataKey="date" interval={200} />
+              <XAxis dataKey="date" interval={2000} />
               <YAxis />
               <Tooltip />
               <Area
