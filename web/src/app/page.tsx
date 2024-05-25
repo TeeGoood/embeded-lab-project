@@ -54,6 +54,7 @@ export default function Home() {
     client.on("message", (topic, message) => {
       try {
         const l = message.toString().split(" ");
+        console.log(l);
         setlevel1(cal1(parseInt(l[1])));
         setlevel2(cal2(parseInt(l[3])));
       } catch (err) {
@@ -73,7 +74,7 @@ export default function Home() {
         },
         body: JSON.stringify({
           start_relative: {
-            value: 15,
+            value: 5,
             unit: "minutes",
           },
           metrics: [

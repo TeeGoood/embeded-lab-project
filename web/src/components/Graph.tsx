@@ -20,7 +20,7 @@ export default function Graph({
     <Card className={cn("w-full", className)} {...props}>
       <CardHeader className="p-4 lg:p-6">
         <CardTitle className="text-sm lg:text-base">
-          15-Minutes Water Level Graph - {props.no}
+          5-Minutes Water Level Graph - {props.no}
         </CardTitle>
       </CardHeader>
       <CardContent className="p-4 pt-0 lg:p-6 lg:pt-0">
