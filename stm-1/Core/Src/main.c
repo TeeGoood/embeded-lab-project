@@ -1,20 +1,20 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2024 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2024 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -22,7 +22,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -32,7 +33,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-uint16_t adc_value;
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -42,6 +43,7 @@ uint16_t adc_value;
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
+DMA_HandleTypeDef hdma_adc1;
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
@@ -53,34 +55,37 @@ const osThreadAttr_t defaultTask_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* Definitions for MessageSend */
-osThreadId_t MessageSendHandle;
-const osThreadAttr_t MessageSend_attributes = {
-  .name = "MessageSend",
+/* Definitions for ReceiveMsg */
+osThreadId_t ReceiveMsgHandle;
+const osThreadAttr_t ReceiveMsg_attributes = {
+  .name = "ReceiveMsg",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 /* USER CODE BEGIN PV */
-uint32_t ADC_Buffer;
-uint32_t buf_rx[12];
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
-	adc_value = HAL_ADC_GetValue(hadc);
-	ADC_Buffer = adc_value;
+uint32_t rxBuffer[12];
+uint16_t val1 = 0;
+uint16_t val2 = 0;
+uint16_t rawValues[2];
 
-	char buf[20];
-	sprintf(buf, "value : %d\n\r", adc_value);
-	HAL_UART_Transmit(&huart2, buf, 20, 1000);
-}
+__IO uint8_t uADCConversionFlag = 0;
+
+char welcomeMsg[] = "==========Program Starting==========\n\r";
+char msg[20];
+
+char tx_msgToNode_1[20];
+char tx_msgToNode_2[20];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_USART1_UART_Init(void);
 void StartDefaultTask(void *argument);
-void StartMessageSend(void *argument);
+void StartReceiveMsg(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -88,7 +93,62 @@ void StartMessageSend(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
+	for (uint8_t i = 0; i < hadc1.Init.NbrOfConversion; i++) {
+		val1 = (uint16_t) rawValues[0];
+		val2 = (uint16_t) rawValues[1];
+	}
+	sprintf(tx_msgToNode_1, "1 %d ", val1);
+	sprintf(tx_msgToNode_2, "2 %d", val2);
 
+//	sprintf(msg, "WS_1 : %hu \n\r", val1);
+//	HAL_UART_Transmit(&huart2, (uint8_t*) msg, strlen(msg), 100);
+//	sprintf(msg, "WS_2 : %hu \n\r", val2);
+//	HAL_UART_Transmit(&huart2, (uint8_t*) msg, strlen(msg), 100);
+
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t*) rawValues, 2);
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+	if (huart == &huart1) {
+		char buf[5];
+		sprintf(buf, "%s\n\r", rxBuffer);
+//		HAL_UART_Transmit(&huart2, buf, 5, 1000);
+
+		if (buf[0] == '1') {
+			if (buf[2] == '0') {
+				// Turn motor off
+				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
+				HAL_UART_Transmit(&huart2, "1 off\n\r", 7, 1000);
+			} else {
+				// Turn motor on
+				HAL_UART_Transmit(&huart2, "1 on\n\r", 6, 1000);
+				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
+			}
+		}
+
+		if (buf[0] == '2') {
+			if (buf[2] == '0') {
+				// Turn motor off
+				HAL_UART_Transmit(&huart2, "2 off\n\r", 7, 1000);
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
+			} else {
+				// Turn motor on
+				HAL_UART_Transmit(&huart2, "2 on\n\r", 6, 1000);
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
+			}
+		}
+	}
+	HAL_UART_Receive_IT(&huart1, rxBuffer, 3);
+}
+
+/* USER CODE BEGIN Header_StartMessageSend */
+/**
+ * @brief Function implementing the MessageSend thread.
+ * @param argument: Not used
+ * @retval None
+ */
+/* USER CODE END Header_StartMessageSend */
 /* USER CODE END 0 */
 
 /**
@@ -119,10 +179,14 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART2_UART_Init();
   MX_ADC1_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
+	HAL_UART_Transmit(&huart2, welcomeMsg, strlen(welcomeMsg), 1000);
+
+
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -148,8 +212,8 @@ int main(void)
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
-  /* creation of MessageSend */
-  MessageSendHandle = osThreadNew(StartMessageSend, NULL, &MessageSend_attributes);
+  /* creation of ReceiveMsg */
+  ReceiveMsgHandle = osThreadNew(StartReceiveMsg, NULL, &ReceiveMsg_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -165,26 +229,16 @@ int main(void)
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-//	  HAL_ADC_Start_IT(&hadc1);
-	  //buff_rx = "";
-//	  HAL_UART_Transmit(&huart2, "pai\n\r", 5, 100);
-//	  HAL_UART_Receive(&huart1, buf_rx, 12, 1000);
-//	  sprintf(buf_tx, "%s\n\r", buf_rx);
-//	  HAL_UART_Transmit(&huart2, buf_tx, 12, 100);
-//	  HAL_Delay(100);
-//	  HAL_UART_Transmit(&huart1, "Chanotai", 8, 100);
-//	  HAL_Delay(1000);
-
-
-//	  HAL_UART_Transmit(&huart1, "Chanotai", 8, 100);
-//	  HAL_UART_Transmit(&huart2, "Chanotai\n\r", 10, 100);
-//	  HAL_Delay(3000);
+	while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
+//		HAL_UART_Transmit(&huart1, (uint8_t*) tx_msgToNode_1,
+//				strlen(tx_msgToNode_1), HAL_MAX_DELAY);
+//		HAL_UART_Transmit(&huart1, (uint8_t*) tx_msgToNode_2,
+//				strlen(tx_msgToNode_2), HAL_MAX_DELAY);
+//		HAL_Delay(2000);
+	}
   /* USER CODE END 3 */
 }
 
@@ -257,15 +311,15 @@ static void MX_ADC1_Init(void)
   hadc1.Instance = ADC1;
   hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc1.Init.ScanConvMode = DISABLE;
-  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.ScanConvMode = ENABLE;
+  hadc1.Init.ContinuousConvMode = ENABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.NbrOfConversion = 2;
   hadc1.Init.DMAContinuousRequests = DISABLE;
-  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  hadc1.Init.EOCSelection = ADC_EOC_SEQ_CONV;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
     Error_Handler();
@@ -276,6 +330,16 @@ static void MX_ADC1_Init(void)
   sConfig.Channel = ADC_CHANNEL_0;
   sConfig.Rank = 1;
   sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_1;
+  sConfig.Rank = 2;
+  sConfig.SamplingTime = ADC_SAMPLETIME_480CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -353,6 +417,22 @@ static void MX_USART2_UART_Init(void)
 }
 
 /**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA2_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA2_Stream0_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -370,7 +450,10 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, LD2_Pin|GPIO_PIN_8, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
@@ -378,12 +461,19 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : LD2_Pin */
-  GPIO_InitStruct.Pin = LD2_Pin;
+  /*Configure GPIO pins : LD2_Pin PA8 */
+  GPIO_InitStruct.Pin = LD2_Pin|GPIO_PIN_8;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PB5 */
+  GPIO_InitStruct.Pin = GPIO_PIN_5;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
@@ -403,34 +493,36 @@ static void MX_GPIO_Init(void)
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t*) rawValues, 2);
   /* Infinite loop */
   for(;;)
   {
-	HAL_ADC_Start_IT(&hadc1);
-    osDelay(1);
+	char combined_msg[strlen(tx_msgToNode_1) + strlen(tx_msgToNode_2) + 1];
+	strcpy(combined_msg, tx_msgToNode_1);
+	strcat(combined_msg, tx_msgToNode_2);
+	HAL_UART_Transmit(&huart1, (uint8_t*) combined_msg, strlen(combined_msg), HAL_MAX_DELAY);
+	osDelay(2000);
   }
   /* USER CODE END 5 */
 }
 
-/* USER CODE BEGIN Header_StartMessageSend */
+/* USER CODE BEGIN Header_StartReceiveMsg */
 /**
-* @brief Function implementing the MessageSend thread.
+* @brief Function implementing the ReceiveMsg thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartMessageSend */
-void StartMessageSend(void *argument)
+/* USER CODE END Header_StartReceiveMsg */
+void StartReceiveMsg(void *argument)
 {
-  /* USER CODE BEGIN StartMessageSend */
+  /* USER CODE BEGIN StartReceiveMsg */
+	HAL_UART_Receive_IT(&huart1, rxBuffer, 3);
   /* Infinite loop */
   for(;;)
   {
-	  char tx_buffer[10];
-	  sprintf(tx_buffer, "%d", ADC_Buffer);
-	HAL_UART_Transmit(&huart1, tx_buffer, 4, 100);
-    osDelay(3000);
+    osDelay(1);
   }
-  /* USER CODE END StartMessageSend */
+  /* USER CODE END StartReceiveMsg */
 }
 
 /**
@@ -440,11 +532,10 @@ void StartMessageSend(void *argument)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  while (1)
-  {
-  }
+	/* User can add his own implementation to report the HAL error return state */
+	__disable_irq();
+	while (1) {
+	}
   /* USER CODE END Error_Handler_Debug */
 }
 

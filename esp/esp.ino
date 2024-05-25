@@ -8,5 +8,6 @@ void loop() {
   while (testSerial.available() > 0) {
     String buf = testSerial.readString();
     Serial.println(buf);
+    testSerial.println("BoomHee");
   }
 }

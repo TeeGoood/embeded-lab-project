@@ -25,7 +25,7 @@ export default function CurrentLevel({
           <span className="text-5xl font-medium lg:text-6xl">
             {props.value}
           </span>{" "}
-          cm
+          %
         </p>
       </CardContent>
     </Card>
